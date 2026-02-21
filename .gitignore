@@ -1,10 +1,48 @@
-# Python-generated files
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[oc]
+*.egg-info
 build/
 dist/
 wheels/
-*.egg-info
 
 # Virtual environments
-.venv
+.venv/
+
+# Tool caches
+.ruff_cache/
+.pytest_cache/
+
+# ── Databases ─────────────────────────────────────────────────────────────────
+*.db
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist-ssr/
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Playwright ────────────────────────────────────────────────────────────────
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Local / agent state ───────────────────────────────────────────────────────
+.claude/settings.local.json
+memory/
