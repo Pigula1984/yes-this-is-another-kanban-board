@@ -1,0 +1,1 @@
+Check the current branch for changes. Then update the CLAUDE.md file and any associated files if necessary.
