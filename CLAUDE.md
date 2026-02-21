@@ -35,8 +35,22 @@ Built with Python/FastAPI backend and React/TypeScript frontend.
 ```
 yes-this-is-another-kanban-board/
 ├── CLAUDE.md
+├── pyproject.toml              # root ruff config (project-wide linting)
+├── skills-lock.json            # installed agent skills manifest
+├── .agents/
+│   └── skills/                 # installed agent skills
+│       ├── find-skills/
+│       ├── frontend-design/
+│       ├── skill-creator/
+│       └── vercel-react-best-practices/
+├── .claude/
+│   ├── agents/                 # Claude subagent definitions
+│   │   ├── commit-preparer.md
+│   │   └── documentalist.md
+│   └── commands/               # Claude slash commands
+│       └── update-docs.md
 ├── backend/
-│   ├── pyproject.toml          # uv project config + ruff config
+│   ├── pyproject.toml          # uv project config + backend dependencies
 │   ├── uv.lock
 │   ├── alembic.ini
 │   ├── alembic/
@@ -196,6 +210,32 @@ npx playwright test --headed     # with visible browser
 - **Owns:** Review checklists, quality gates.
 - **Responsibilities:** Review all pull requests before merge, check for security issues (OWASP top 10), enforce coding standards and project conventions, verify test coverage, flag performance concerns, ensure `data-testid` attributes are present on interactive elements.
 - **Rules:** No code merges without reviewer approval. Reject changes that lack tests, introduce security vulnerabilities, or violate project conventions. Provide actionable, specific feedback. Run linters and tests independently to verify agent claims.
+
+## Agent Skills & Tooling
+
+### Installed Skills (`skills-lock.json`)
+
+| Skill | Source | Used By |
+|---|---|---|
+| `find-skills` | vercel-labs/skills | all agents |
+| `frontend-design` | anthropics/skills | frontend-agent, ux-designer |
+| `skill-creator` | anthropics/skills | all agents |
+| `vercel-react-best-practices` | vercel-labs/agent-skills | frontend-agent |
+
+Skills are installed under `.agents/skills/` and `.claude/skills/`. To add or update skills, modify `skills-lock.json`.
+
+### Claude Subagents (`.claude/agents/`)
+
+| Agent | Purpose | Key Behavior |
+|---|---|---|
+| `commit-preparer` | Groups changes into logical commits | **Requires user confirmation before executing any commits** |
+| `documentalist` | Creates and updates documentation | Invoked after significant feature work |
+
+### Claude Commands (`.claude/commands/`)
+
+| Command | Trigger | Purpose |
+|---|---|---|
+| `update-docs` | `/update-docs` | Reviews branch changes and updates CLAUDE.md |
 
 ## Coding Standards
 
