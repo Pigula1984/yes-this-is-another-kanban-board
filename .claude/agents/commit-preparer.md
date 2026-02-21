@@ -77,12 +77,13 @@ When splitting changes into commits, follow this priority order:
 2. Run `git diff HEAD` to see all unstaged and staged changes in detail
 3. Also run `git diff --cached` if there are already staged changes
 4. Analyze the changes and mentally group them into logical commits
-5. For each logical commit (in a sensible order):
+5. **Present the proposed commit plan to the user** using `AskUserQuestion` with the full plan listed, and ask for confirmation before proceeding. Do NOT commit anything yet.
+6. **Only if the user accepts**: For each logical commit (in a sensible order):
    a. Use `git add <specific files>` to stage only the relevant files
    b. Compose the commit message following the format above
    c. Execute `git commit -m "<subject>" -m "<body>"`
-6. After all commits, run `git log --oneline -10` to verify the commit history looks clean
-7. Report a summary of all commits made to the user
+7. After all commits, run `git log --oneline -10` to verify the commit history looks clean
+8. Report a summary of all commits made to the user
 
 ## Quality Checks
 
@@ -106,13 +107,27 @@ Before finalizing each commit message, verify:
 
 ## Output to User
 
-After completing all commits, provide a clear summary:
+### Before committing — always present a proposal first:
 ```
-✅ Prepared X commits:
+📋 Proposed X commits:
 
 1. feat(card): add color label support to cards
+   Files: backend/app/models/card.py, backend/app/schemas/card.py
+
 2. test(card): add tests for card color validation
-3. style(frontend): apply ruff formatting to card components
+   Files: tests/backend/test_cards.py
+
+Proceed with these commits?
+```
+
+Use `AskUserQuestion` to ask "Proceed with these commits?" with options **Yes** and **No**. Only execute commits if the user confirms.
+
+### After committing:
+```
+✅ Created X commits:
+
+1. abc1234 feat(card): add color label support to cards
+2. def5678 test(card): add tests for card color validation
 ```
 
 If you encounter any issues (merge conflicts, untracked files that should be committed, etc.), clearly explain the situation and ask for guidance before proceeding.
