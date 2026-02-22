@@ -115,15 +115,15 @@ export function BoardView({ boardId, isDark, toggleTheme }: Props) {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-gray-500 dark:text-gray-400">Loading board...</div>;
-  if (!board) return <div className="p-8 text-red-500 dark:text-red-400">Board not found</div>;
+  if (isLoading) return <div className="p-8 text-sm text-gray-400 dark:text-gray-500">Loading board...</div>;
+  if (!board) return <div className="p-8 text-sm text-red-500 dark:text-red-400">Board not found</div>;
 
   const sortedColumns = [...board.columns].sort((a, b) => a.position - b.position);
 
   return (
     <div data-testid="board-view" className="flex-1 overflow-hidden flex flex-col">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center transition-colors duration-200">
-        <h2 data-testid="board-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">{board.title}</h2>
+      <div className="px-6 py-3.5 border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-between items-center">
+        <h2 data-testid="board-title" className="text-base font-semibold text-gray-900 dark:text-gray-100 tracking-tight">{board.title}</h2>
         <ThemeToggle isDark={isDark} toggle={toggleTheme} />
       </div>
       <DndContext
@@ -139,8 +139,8 @@ export function BoardView({ boardId, isDark, toggleTheme }: Props) {
         }}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 overflow-x-auto p-6">
-          <div className="flex gap-4 items-start min-h-full">
+        <div className="flex-1 overflow-x-auto px-6 py-5">
+          <div className="flex gap-5 items-start min-h-full">
             {sortedColumns.map(column => (
               <ColumnItem
                 key={column.id}
