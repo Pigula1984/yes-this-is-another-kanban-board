@@ -20,27 +20,28 @@ export function CardItem({ card, onDelete }: Props) {
   };
 
   return (
-    <div
+    <article
       ref={setNodeRef}
       style={style}
       data-testid={`card-${card.id}`}
-      className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing group"
+      className="bg-white dark:bg-gray-700 rounded-lg p-3 shadow-sm dark:shadow-md dark:shadow-black/20 border border-gray-200 dark:border-gray-600 cursor-grab active:cursor-grabbing group transition-colors duration-200"
       {...attributes}
       {...listeners}
     >
       <div className="flex justify-between items-start gap-2">
-        <span className="text-sm font-medium text-gray-800 flex-1">{card.title}</span>
+        <span className="text-sm font-medium text-gray-800 dark:text-gray-100 flex-1">{card.title}</span>
         <button
           data-testid={`card-delete-${card.id}`}
+          aria-label={`Delete card ${card.title}`}
           onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
-          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-xs transition-opacity"
+          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 text-xs transition-opacity duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 rounded"
         >
           ✕
         </button>
       </div>
       {card.description && (
-        <p className="text-xs text-gray-500 mt-1">{card.description}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{card.description}</p>
       )}
-    </div>
+    </article>
   );
 }
