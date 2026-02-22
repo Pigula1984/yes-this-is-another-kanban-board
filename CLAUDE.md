@@ -25,6 +25,7 @@ Built with Python/FastAPI backend and React/TypeScript frontend.
 - **Zustand** – state management
 - **TanStack Query** – server state / caching
 - **Axios** – HTTP client
+- **lucide-react** – SVG icon library
 
 ### Testing
 - **pytest** – backend unit and integration tests
@@ -85,7 +86,8 @@ yes-this-is-another-kanban-board/
 │       ├── components/
 │       │   ├── Board/
 │       │   ├── Column/
-│       │   └── Card/
+│       │   ├── Card/
+│       │   └── ThemeToggle.tsx
 │       ├── hooks/
 │       └── store/
 └── tests/
@@ -245,3 +247,12 @@ Skills are installed under `.agents/skills/` and `.claude/skills/`. To add or up
 - SQLite database file: `backend/kanban.db` (gitignored)
 - CORS enabled for `http://localhost:5173`
 - API base URL in frontend: `http://localhost:8000`
+
+## UI Design System
+
+- **Aesthetic:** Modern SaaS style (inspired by Linear/Vercel/Notion)
+- **Typography:** Inter font (Google Fonts, weights 400/500/600/700) applied globally via `index.css`
+- **Icons:** lucide-react for all interactive element icons
+- **Dark mode:** Supported via `ThemeToggle` component; uses Tailwind's `dark:` variant classes
+- **Shadows:** Custom CSS variables for card and hover elevation states defined in `index.css`
+- **Color palette:** Neutral grays/slate with blue accents; consistent across light and dark modes

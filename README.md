@@ -11,7 +11,8 @@ A full-stack Kanban board application built with Python/FastAPI and React/TypeSc
 - **Real-time Persistence** — All changes are persisted to SQLite database
 - **Board Selection** — Sidebar navigation to quickly switch between boards
 - **Delete Operations** — Remove boards, columns, and cards with confirmation
-- **Responsive UI** — Built with TailwindCSS v4 for a modern, clean interface
+- **Dark Mode** — Toggle between light and dark themes with persistent preference
+- **Modern Design** — Clean, professional SaaS-style interface inspired by Linear, Vercel, and Notion
 
 ## Tech Stack
 
@@ -34,11 +35,12 @@ A full-stack Kanban board application built with Python/FastAPI and React/TypeSc
 | **React 19** | UI framework |
 | **TypeScript** | Type-safe JavaScript |
 | **Vite** | Build tool and dev server |
-| **TailwindCSS v4** | Utility-first CSS framework |
+| **TailwindCSS v4** | Utility-first CSS framework with custom design tokens |
 | **@dnd-kit** | Drag-and-drop library (core, sortable, utilities) |
 | **Zustand** | Lightweight state management |
 | **TanStack Query** | Server state management and caching |
 | **Axios** | HTTP client for API calls |
+| **lucide-react** | Icon library for UI components |
 
 ### Testing
 | Technology | Purpose |
@@ -94,9 +96,10 @@ yes-this-is-another-kanban-board/
 │       │   ├── Column/
 │       │   │   ├── ColumnItem.tsx     # Column container with cards
 │       │   │   └── AddColumnForm.tsx  # Column creation form
-│       │   └── Card/
-│       │       ├── CardItem.tsx       # Card display component
-│       │       └── AddCardForm.tsx    # Card creation form
+│       │   ├── Card/
+│       │   │   ├── CardItem.tsx       # Card display component
+│       │   │   └── AddCardForm.tsx    # Card creation form
+│       │   └── ThemeToggle.tsx        # Light/dark mode toggle component
 │       ├── hooks/                    # Custom React hooks
 │       └── store/
 │           └── boardStore.ts         # Zustand store for selected board state
@@ -226,6 +229,27 @@ npm run dev
 ```
 
 Then open `http://localhost:5173` in your browser.
+
+## Design System
+
+The frontend follows a modern SaaS aesthetic with a professional, minimal design system:
+
+**Typography:**
+- Inter font family for all text (clean, modern, professional)
+
+**Color Palette:**
+- Blue accent color for primary actions and highlights
+- Light mode: Clean white backgrounds with subtle gray borders
+- Dark mode: Dark gray backgrounds with lighter text for reduced eye strain
+
+**Visual Tokens:**
+- Custom shadow tokens for depth and layering (used for cards, modals, popovers)
+- Consistent spacing and padding throughout
+
+**Theme Toggle:**
+- Users can switch between light and dark modes via the `ThemeToggle` component
+- Theme preference is stored in local storage and persists across sessions
+- Dark mode uses a sophisticated color palette inspired by professional tools (Linear, Vercel, Notion)
 
 ## API Reference
 
@@ -800,7 +824,7 @@ This creates a `dist/` directory with optimized, minified static assets ready fo
 
 - **No Search or Filter** — There is no way to search for boards or cards, or filter by status.
 
-- **No User Preferences** — Settings like theme, column order preferences, or default board are not persisted.
+- **Limited User Preferences** — Theme preference is persisted, but other settings like column order preferences or default board are not saved.
 
 - **CORS Restricted** — CORS is hardcoded to allow only `http://localhost:5173`. This must be updated for other deployment scenarios.
 
