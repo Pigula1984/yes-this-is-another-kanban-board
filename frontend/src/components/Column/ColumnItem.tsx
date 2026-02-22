@@ -22,39 +22,43 @@ export function ColumnItem({ column, cards, onAddCard, onDeleteCard, onDeleteCol
   const sortedCards = [...cards].sort((a, b) => a.position - b.position);
 
   return (
-    <div
+    <section
       data-testid={`column-${column.id}`}
-      className="bg-gray-100 rounded-xl p-3 w-72 flex-shrink-0 flex flex-col gap-3"
+      aria-label={`Column: ${column.title}, ${cards.length} cards`}
+      className="bg-[#EBEBEB] dark:bg-gray-800/60 rounded-xl px-3 pt-3 pb-2 w-72 flex-shrink-0 flex flex-col gap-2 border border-slate-200/60 dark:border-gray-700/50"
     >
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center px-0.5 mb-1">
         {isEditing ? (
           <input
             autoFocus
+            aria-label="Column title"
             value={title}
             onChange={e => setTitle(e.target.value)}
             onBlur={() => setIsEditing(false)}
             onKeyDown={e => { if (e.key === 'Enter') setIsEditing(false); }}
-            className="text-sm font-semibold bg-white border border-gray-300 rounded px-2 py-0.5 flex-1"
+            className="text-xs font-semibold bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-slate-300 dark:border-gray-600 rounded-md px-2 py-0.5 flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase tracking-wide"
           />
         ) : (
           <h3
             data-testid={`column-title-${column.id}`}
-            className="text-sm font-semibold text-gray-700 flex-1 cursor-pointer"
+            className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide flex-1 cursor-pointer flex items-center gap-2"
             onClick={() => setIsEditing(true)}
           >
-            {column.title} <span className="text-gray-400 font-normal">({cards.length})</span>
+            {column.title}
+            <span className="text-gray-400 dark:text-gray-500 font-normal normal-case tracking-normal text-xs">({cards.length})</span>
           </h3>
         )}
         <button
           data-testid={`column-delete-${column.id}`}
+          aria-label={`Delete column ${column.title}`}
           onClick={() => onDeleteColumn(column.id)}
-          className="text-gray-400 hover:text-red-500 text-xs ml-2 transition-colors"
+          className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 text-xs ml-2 p-0.5 rounded transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           ✕
         </button>
       </div>
 
-      <div ref={setNodeRef} className="flex flex-col gap-2 min-h-[4px]">
+      <div ref={setNodeRef} className="flex flex-col gap-2 min-h-[8px]">
         <SortableContext items={sortedCards.map(c => `card-${c.id}`)} strategy={verticalListSortingStrategy}>
           {sortedCards.map(card => (
             <CardItem key={card.id} card={card} onDelete={onDeleteCard} />
@@ -63,6 +67,6 @@ export function ColumnItem({ column, cards, onAddCard, onDeleteCard, onDeleteCol
       </div>
 
       <AddCardForm columnId={column.id} onAdd={(t) => onAddCard(column.id, t)} />
-    </div>
+    </section>
   );
 }

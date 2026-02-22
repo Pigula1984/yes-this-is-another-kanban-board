@@ -113,6 +113,60 @@ test.describe('Kanban Board E2E', () => {
     await expect(inProgressColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Test Card' })).toBeVisible();
   });
 
+  test('theme toggle switches between light and dark mode', async ({ page }) => {
+    // Clear any stored theme preference
+    await page.evaluate(() => localStorage.removeItem('theme'));
+    await page.reload();
+
+    // Theme toggle should be visible (shown in top-right when no board is selected)
+    const toggle = page.getByTestId('theme-toggle');
+    await expect(toggle).toBeVisible();
+
+    // Initially should be light mode (no 'dark' class on <html>)
+    const htmlEl = page.locator('html');
+    await expect(htmlEl).not.toHaveClass(/dark/);
+
+    // Click to enable dark mode
+    await toggle.click();
+    await expect(htmlEl).toHaveClass(/dark/);
+
+    // Verify localStorage was updated
+    const storedTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(storedTheme).toBe('dark');
+
+    // Click again to return to light mode
+    await toggle.click();
+    await expect(htmlEl).not.toHaveClass(/dark/);
+
+    const storedThemeAfter = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(storedThemeAfter).toBe('light');
+  });
+
+  test('theme preference persists after reload', async ({ page }) => {
+    // Set dark mode
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'));
+    await page.reload();
+
+    // Should load in dark mode
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(page.getByTestId('theme-toggle')).toBeVisible();
+  });
+
+  test('theme toggle is available inside board view', async ({ page }) => {
+    await page.evaluate(() => localStorage.removeItem('theme'));
+    await page.reload();
+
+    await createBoard(page, 'Theme Board');
+
+    // Toggle should still be accessible within board view
+    const toggle = page.getByTestId('theme-toggle');
+    await expect(toggle).toBeVisible();
+
+    // Toggle should work from board view
+    await toggle.click();
+    await expect(page.locator('html')).toHaveClass(/dark/);
+  });
+
   test('card position persists after page reload', async ({ page }) => {
     await createBoard(page, 'Persist Test Board');
     await addColumn(page, 'To Do');
