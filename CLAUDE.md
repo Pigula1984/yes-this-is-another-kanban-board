@@ -118,6 +118,8 @@ yes-this-is-another-kanban-board/
 - `description` – string, optional
 - `position` – integer (order within column)
 - `column_id` – foreign key → Column
+- `due_date` – datetime, optional
+- `assignee` – string, optional
 - `created_at` – datetime
 
 ## API Endpoints
@@ -135,7 +137,7 @@ DELETE /api/columns/{id}        – delete column
 
 GET    /api/cards/{column_id}   – list cards for a column
 POST   /api/cards               – create card
-PATCH  /api/cards/{id}          – update card (title, description, position, column_id)
+PATCH  /api/cards/{id}          – update card (title, description, position, column_id, due_date, assignee)
 DELETE /api/cards/{id}          – delete card
 ```
 
