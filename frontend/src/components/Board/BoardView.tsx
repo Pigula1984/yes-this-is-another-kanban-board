@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBoard, createColumn, createCard, updateCard, deleteCard, deleteColumn } from '../../api/client';
-import type { Card } from '../../api/client';
+import type { Card, Column } from '../../api/client';
 import { ColumnItem } from '../Column/ColumnItem';
 import { AddColumnForm } from '../Column/AddColumnForm';
 import { CardItem } from '../Card/CardItem';
@@ -19,6 +19,10 @@ interface Props {
 export function BoardView({ boardId, isDark, toggleTheme }: Props) {
   const queryClient = useQueryClient();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  // dragColumns is only non-null during an active drag (optimistic UI)
+  // When null, we render board.columns directly — no async delay on card/column mutations
+  const [dragColumns, setDragColumns] = useState<Column[] | null>(null);
+  const dragSourceRef = useRef<{ cardId: number; columnId: number } | null>(null);
 
   const { data: board, isLoading } = useQuery({
     queryKey: ['board', boardId],
@@ -37,10 +41,10 @@ export function BoardView({ boardId, isDark, toggleTheme }: Props) {
   });
 
   const addCardMutation = useMutation({
-    mutationFn: ({ columnId, title }: { columnId: number; title: string }) => {
+    mutationFn: ({ columnId, title, assignee, dueDate }: { columnId: number; title: string; assignee?: string; dueDate?: string }) => {
       const col = board?.columns.find(c => c.id === columnId);
       const position = col?.cards.length ?? 0;
-      return createCard({ title, position, column_id: columnId });
+      return createCard({ title, position, column_id: columnId, assignee, due_date: dueDate });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['board', boardId] }),
   });
@@ -61,64 +65,114 @@ export function BoardView({ boardId, isDark, toggleTheme }: Props) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['board', boardId] }),
   });
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    if (!activeId.startsWith('card-')) return;
+    const cardId = parseInt(activeId.replace('card-', ''));
+    const overId = String(over.id);
+
+    setDragColumns(prevCols => {
+      if (!prevCols) return prevCols;
+      const sourceColIndex = prevCols.findIndex(col => col.cards.some(c => c.id === cardId));
+      if (sourceColIndex === -1) return prevCols;
+      const sourceCol = prevCols[sourceColIndex];
+
+      let targetColId: number;
+      if (overId.startsWith('column-')) {
+        targetColId = parseInt(overId.replace('column-', ''));
+      } else if (overId.startsWith('card-')) {
+        const overCardId = parseInt(overId.replace('card-', ''));
+        const targetColIdx = prevCols.findIndex(col => col.cards.some(c => c.id === overCardId));
+        if (targetColIdx === -1) return prevCols;
+        targetColId = prevCols[targetColIdx].id;
+      } else {
+        return prevCols;
+      }
+
+      if (sourceCol.id === targetColId) return prevCols;
+
+      const targetColIndex = prevCols.findIndex(c => c.id === targetColId);
+      if (targetColIndex === -1) return prevCols;
+      const targetCol = prevCols[targetColIndex];
+
+      const movingCard = sourceCol.cards.find(c => c.id === cardId)!;
+      const newSourceCards = sourceCol.cards.filter(c => c.id !== cardId);
+
+      let insertIndex: number;
+      if (overId.startsWith('card-')) {
+        const overCardId = parseInt(overId.replace('card-', ''));
+        const overIdx = targetCol.cards.findIndex(c => c.id === overCardId);
+        insertIndex = overIdx >= 0 ? overIdx : targetCol.cards.length;
+      } else {
+        insertIndex = targetCol.cards.length;
+      }
+
+      const newTargetCards = [...targetCol.cards];
+      newTargetCards.splice(insertIndex, 0, { ...movingCard, column_id: targetColId });
+
+      return prevCols.map((col, idx) => {
+        if (idx === sourceColIndex) return { ...col, cards: newSourceCards };
+        if (idx === targetColIndex) return { ...col, cards: newTargetCards };
+        return col;
+      });
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCard(null);
-    if (!over || !board) return;
 
     const activeId = String(active.id);
-    const overId = String(over.id);
-
-    if (!activeId.startsWith('card-')) return;
-
-    const cardId = parseInt(activeId.replace('card-', ''));
-
-    // Find source column
-    const sourceColumn = board.columns.find(col => col.cards.some(c => c.id === cardId));
-    if (!sourceColumn) return;
-
-    // Determine target column
-    let targetColumnId: number;
-    if (overId.startsWith('column-')) {
-      targetColumnId = parseInt(overId.replace('column-', ''));
-    } else if (overId.startsWith('card-')) {
-      const targetCardId = parseInt(overId.replace('card-', ''));
-      const targetCol = board.columns.find(col => col.cards.some(c => c.id === targetCardId));
-      targetColumnId = targetCol?.id ?? sourceColumn.id;
-    } else {
+    if (!activeId.startsWith('card-')) {
+      setDragColumns(null);
+      dragSourceRef.current = null;
       return;
     }
+    const cardId = parseInt(activeId.replace('card-', ''));
 
-    const targetColumn = board.columns.find(c => c.id === targetColumnId);
-    if (!targetColumn) return;
+    if (!dragSourceRef.current || !board) {
+      setDragColumns(null);
+      dragSourceRef.current = null;
+      return;
+    }
+    const { columnId: originalColumnId } = dragSourceRef.current;
+    dragSourceRef.current = null;
 
-    if (sourceColumn.id === targetColumnId) {
-      // Reorder within same column
-      const cards = [...sourceColumn.cards].sort((a, b) => a.position - b.position);
-      const oldIndex = cards.findIndex(c => c.id === cardId);
-      let newIndex = oldIndex;
+    const currentCol = dragColumns?.find(col => col.cards.some(c => c.id === cardId));
+
+    // Clear drag state before mutations so UI snaps back to server state on invalidate
+    setDragColumns(null);
+
+    if (!currentCol) return;
+
+    if (currentCol.id !== originalColumnId) {
+      // Cross-column: dragColumns already has correct position from onDragOver
+      const newPosition = currentCol.cards.findIndex(c => c.id === cardId);
+      updateCardMutation.mutate({ id: cardId, data: { column_id: currentCol.id, position: newPosition } });
+    } else if (over) {
+      // Same column: determine new position from drop target
+      const overId = String(over.id);
       if (overId.startsWith('card-')) {
         const overCardId = parseInt(overId.replace('card-', ''));
-        newIndex = cards.findIndex(c => c.id === overCardId);
+        const cards = [...(board.columns.find(c => c.id === originalColumnId)?.cards ?? [])].sort((a, b) => a.position - b.position);
+        const oldIndex = cards.findIndex(c => c.id === cardId);
+        const newIndex = cards.findIndex(c => c.id === overCardId);
+        if (oldIndex !== newIndex && oldIndex >= 0 && newIndex >= 0) {
+          const reordered = arrayMove(cards, oldIndex, newIndex);
+          reordered.forEach((card, idx) => {
+            updateCardMutation.mutate({ id: card.id, data: { position: idx } });
+          });
+        }
       }
-      if (oldIndex !== newIndex) {
-        const reordered = arrayMove(cards, oldIndex, newIndex);
-        reordered.forEach((card, idx) => {
-          updateCardMutation.mutate({ id: card.id, data: { position: idx } });
-        });
-      }
-    } else {
-      // Move to different column
-      const targetCards = [...targetColumn.cards].sort((a, b) => a.position - b.position);
-      const newPosition = targetCards.length;
-      updateCardMutation.mutate({ id: cardId, data: { column_id: targetColumnId, position: newPosition } });
     }
   };
 
   if (isLoading) return <div className="p-8 text-sm text-gray-400 dark:text-gray-500">Loading board...</div>;
   if (!board) return <div className="p-8 text-sm text-red-500 dark:text-red-400">Board not found</div>;
 
-  const sortedColumns = [...board.columns].sort((a, b) => a.position - b.position);
+  const displayColumns = dragColumns ?? [...board.columns].sort((a, b) => a.position - b.position);
 
   return (
     <div data-testid="board-view" className="flex-1 overflow-hidden flex flex-col">
@@ -134,19 +188,33 @@ export function BoardView({ boardId, isDark, toggleTheme }: Props) {
           if (activeId.startsWith('card-')) {
             const cardId = parseInt(activeId.replace('card-', ''));
             const card = board.columns.flatMap(c => c.cards).find(c => c.id === cardId);
-            if (card) setActiveCard(card);
+            if (card) {
+              setActiveCard(card);
+              const sourceCol = board.columns.find(col => col.cards.some(c => c.id === cardId));
+              if (sourceCol) {
+                dragSourceRef.current = { cardId, columnId: sourceCol.id };
+                // Initialize drag state from current board data
+                setDragColumns([...board.columns].sort((a, b) => a.position - b.position));
+              }
+            }
           }
         }}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          dragSourceRef.current = null;
+          setActiveCard(null);
+          setDragColumns(null);
+        }}
       >
         <div className="flex-1 overflow-x-auto px-6 py-5">
           <div className="flex gap-5 items-start min-h-full">
-            {sortedColumns.map(column => (
+            {displayColumns.map(column => (
               <ColumnItem
                 key={column.id}
                 column={column}
                 cards={column.cards}
-                onAddCard={(colId, title) => addCardMutation.mutate({ columnId: colId, title })}
+                onAddCard={(colId, title, assignee, dueDate) => addCardMutation.mutate({ columnId: colId, title, assignee, dueDate })}
                 onDeleteCard={(cardId) => deleteCardMutation.mutate(cardId)}
                 onDeleteColumn={(colId) => deleteColumnMutation.mutate(colId)}
               />

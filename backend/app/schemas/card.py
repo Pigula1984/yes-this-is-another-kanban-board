@@ -12,6 +12,8 @@ class CardBase(BaseModel):
     description: str | None = None
     position: int
     column_id: int
+    due_date: datetime | None = None
+    assignee: str | None = None
 
 
 class CardCreate(CardBase):
@@ -25,6 +27,8 @@ class CardUpdate(BaseModel):
     description: str | None = None
     position: int | None = None
     column_id: int | None = None
+    due_date: datetime | None = None
+    assignee: str | None = None
 
 
 class CardRead(CardBase):

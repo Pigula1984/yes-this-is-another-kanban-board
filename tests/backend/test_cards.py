@@ -148,3 +148,94 @@ def test_delete_card(client):
 def test_delete_card_not_found(client):
     response = client.delete("/api/cards/9999")
     assert response.status_code == 404
+
+
+def test_create_card_with_due_date(client):
+    board = _create_board(client)
+    col = _create_column(client, board["id"])
+
+    response = client.post(
+        "/api/cards",
+        json={"title": "Due Card", "position": 0, "column_id": col["id"], "due_date": "2025-12-31T00:00:00"},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["due_date"] is not None
+    assert "2025-12-31" in data["due_date"]
+
+
+def test_create_card_with_assignee(client):
+    board = _create_board(client)
+    col = _create_column(client, board["id"])
+
+    response = client.post(
+        "/api/cards",
+        json={"title": "Assigned Card", "position": 0, "column_id": col["id"], "assignee": "Alice"},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["assignee"] == "Alice"
+
+
+def test_create_card_with_all_optional_fields(client):
+    board = _create_board(client)
+    col = _create_column(client, board["id"])
+
+    response = client.post(
+        "/api/cards",
+        json={
+            "title": "Full Card",
+            "description": "Detailed description",
+            "due_date": "2026-06-15T00:00:00",
+            "assignee": "Bob",
+            "position": 0,
+            "column_id": col["id"],
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["description"] == "Detailed description"
+    assert data["assignee"] == "Bob"
+    assert "2026-06-15" in data["due_date"]
+
+
+def test_update_card_due_date(client):
+    board = _create_board(client)
+    col = _create_column(client, board["id"])
+    card_resp = client.post(
+        "/api/cards",
+        json={"title": "Card", "position": 0, "column_id": col["id"]},
+    )
+    card_id = card_resp.json()["id"]
+
+    response = client.patch(f"/api/cards/{card_id}", json={"due_date": "2026-01-01T00:00:00"})
+    assert response.status_code == 200
+    assert "2026-01-01" in response.json()["due_date"]
+
+
+def test_update_card_assignee(client):
+    board = _create_board(client)
+    col = _create_column(client, board["id"])
+    card_resp = client.post(
+        "/api/cards",
+        json={"title": "Card", "position": 0, "column_id": col["id"]},
+    )
+    card_id = card_resp.json()["id"]
+
+    response = client.patch(f"/api/cards/{card_id}", json={"assignee": "Charlie"})
+    assert response.status_code == 200
+    assert response.json()["assignee"] == "Charlie"
+
+
+def test_update_card_clear_due_date(client):
+    board = _create_board(client)
+    col = _create_column(client, board["id"])
+    card_resp = client.post(
+        "/api/cards",
+        json={"title": "Card", "due_date": "2026-01-01T00:00:00", "position": 0, "column_id": col["id"]},
+    )
+    card_id = card_resp.json()["id"]
+
+    response = client.patch(f"/api/cards/{card_id}", json={"due_date": None})
+    assert response.status_code == 200
+    assert response.json()["due_date"] is None

@@ -167,6 +167,85 @@ test.describe('Kanban Board E2E', () => {
     await expect(page.locator('html')).toHaveClass(/dark/);
   });
 
+  test('creates a card with assignee', async ({ page }) => {
+    await createBoard(page, 'Assignee Test Board');
+    await addColumn(page, 'To Do');
+
+    const columnSelector = `[data-testid^="column-"]:has([data-testid^="column-title-"]:text("To Do"))`;
+    const column = page.locator(columnSelector);
+
+    await column.getByTestId('add-card-btn').click();
+    await column.getByTestId('card-title-input').fill('Assigned Task');
+    await column.getByTestId('card-assignee-input').fill('Alice');
+    await column.getByTestId('add-card-submit').click();
+
+    // Wait for card to appear
+    await page.locator('[data-testid^="card-"]').filter({ hasText: 'Assigned Task' }).waitFor({ state: 'visible' });
+
+    // Verify assignee name is shown on the card
+    const card = page.locator('[data-testid^="card-"]').filter({ hasText: 'Assigned Task' });
+    await expect(card).toContainText('Alice');
+  });
+
+  test('creates a card with due date', async ({ page }) => {
+    await createBoard(page, 'Due Date Test Board');
+    await addColumn(page, 'To Do');
+
+    const columnSelector = `[data-testid^="column-"]:has([data-testid^="column-title-"]:text("To Do"))`;
+    const column = page.locator(columnSelector);
+
+    await column.getByTestId('add-card-btn').click();
+    await column.getByTestId('card-title-input').fill('Dated Task');
+    await column.getByTestId('card-due-date-input').fill('2027-06-15');
+    await column.getByTestId('add-card-submit').click();
+
+    // Wait for card to appear
+    await page.locator('[data-testid^="card-"]').filter({ hasText: 'Dated Task' }).waitFor({ state: 'visible' });
+
+    // Verify a date is displayed on the card (locale-independent: just check for the year)
+    const card = page.locator('[data-testid^="card-"]').filter({ hasText: 'Dated Task' });
+    await expect(card).toContainText('2027');
+  });
+
+  test('overdue card is highlighted', async ({ page }) => {
+    // Create board and column via UI first
+    await createBoard(page, 'Overdue Test Board');
+    await addColumn(page, 'To Do');
+
+    // Get board and column IDs from API
+    const boardsResp = await page.request.get('http://localhost:8000/api/boards');
+    const boardList = await boardsResp.json();
+    const board = boardList[0];
+
+    const boardDetailResp = await page.request.get(`http://localhost:8000/api/boards/${board.id}`);
+    const boardDetail = await boardDetailResp.json();
+    const column = boardDetail.columns[0];
+
+    // Create an overdue card via API (yesterday's date)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const overdueDate = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    const cardResp = await page.request.post('http://localhost:8000/api/cards', {
+      data: {
+        title: 'Overdue Task',
+        position: 0,
+        column_id: column.id,
+        due_date: `${overdueDate}T00:00:00`,
+      },
+    });
+    const card = await cardResp.json();
+
+    // Reload and navigate to the board
+    await page.reload();
+    await page.getByTestId(`board-item-${board.id}`).waitFor({ state: 'visible' });
+    await page.getByTestId(`board-item-${board.id}`).click();
+    await page.waitForSelector('[data-testid^="column-"]');
+
+    // Verify the overdue indicator is visible
+    await expect(page.getByTestId(`card-overdue-${card.id}`)).toBeVisible();
+  });
+
   test('card position persists after page reload', async ({ page }) => {
     await createBoard(page, 'Persist Test Board');
     await addColumn(page, 'To Do');
@@ -196,11 +275,203 @@ test.describe('Kanban Board E2E', () => {
     // Reload page
     await page.reload();
 
+    // Navigate back to the board (reload returns to board list)
+    await page.getByTestId(`board-item-${board.id}`).waitFor({ state: 'visible' });
+    await page.getByTestId(`board-item-${board.id}`).click();
+
     // Wait for board to load
     await page.waitForSelector('[data-testid^="column-"]');
 
     // Card should be in "Done" column
     const doneColumnEl = page.locator('[data-testid^="column-"]').filter({ has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'Done' }) });
     await expect(doneColumnEl.locator('[data-testid^="card-"]').filter({ hasText: 'Persistent Card' })).toBeVisible();
+  });
+
+  test('drag a card with assignee and due date to another column', async ({ page }) => {
+    await createBoard(page, 'Drag Fields Test Board');
+    await addColumn(page, 'To Do');
+    await addColumn(page, 'Done');
+
+    // Create a card with assignee and due date via API
+    const boardsResp = await page.request.get('http://localhost:8000/api/boards');
+    const boards = await boardsResp.json();
+    const board = boards[0];
+    const boardDetail = await (await page.request.get(`http://localhost:8000/api/boards/${board.id}`)).json();
+    const todoCol = boardDetail.columns.find((c: { title: string }) => c.title === 'To Do');
+
+    await page.request.post('http://localhost:8000/api/cards', {
+      data: { title: 'Tagged Task', position: 0, column_id: todoCol.id, assignee: 'Alice', due_date: '2030-06-01T00:00:00' },
+    });
+    await page.reload();
+    await page.getByTestId(`board-item-${board.id}`).waitFor({ state: 'visible' });
+    await page.getByTestId(`board-item-${board.id}`).click();
+    await page.waitForSelector('[data-testid^="column-"]');
+
+    const toDoColumn = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'To Do' }),
+    });
+    const doneColumn = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'Done' }),
+    });
+    await expect(toDoColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Tagged Task' })).toBeVisible();
+
+    const cardEl = toDoColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Tagged Task' });
+    const cardBox = await cardEl.boundingBox();
+    const targetBox = await doneColumn.boundingBox();
+
+    if (cardBox && targetBox) {
+      await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 20 });
+      await page.mouse.up();
+    }
+
+    await page.waitForTimeout(1000);
+
+    await expect(doneColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Tagged Task' })).toBeVisible();
+    await expect(toDoColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Tagged Task' })).toHaveCount(0);
+    await expect(doneColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Alice' })).toBeVisible();
+  });
+
+  test('card alignment is correct after drag between columns', async ({ page }) => {
+    await createBoard(page, 'Alignment Test Board');
+    await addColumn(page, 'Source Column');
+    await addColumn(page, 'Target Column');
+
+    const sourceColumnSelector = `[data-testid^="column-"]:has([data-testid^="column-title-"]:text("Source Column"))`;
+    const targetColumnSelector = `[data-testid^="column-"]:has([data-testid^="column-title-"]:text("Target Column"))`;
+
+    // Add two cards to Source Column
+    await addCard(page, 'Card A', sourceColumnSelector);
+    await addCard(page, 'Card B', sourceColumnSelector);
+    // Add one card to Target Column
+    await addCard(page, 'Card C', targetColumnSelector);
+
+    const sourceColumn = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'Source Column' }),
+    });
+    const targetColumn = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'Target Column' }),
+    });
+
+    // Verify both cards are in source column
+    await expect(sourceColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card A' })).toBeVisible();
+    await expect(sourceColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card B' })).toBeVisible();
+    await expect(targetColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card C' })).toBeVisible();
+
+    // Drag Card A from Source Column to Target Column
+    const cardAEl = sourceColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card A' });
+    const cardABox = await cardAEl.boundingBox();
+    const targetBox = await targetColumn.boundingBox();
+
+    if (cardABox && targetBox) {
+      await page.mouse.move(cardABox.x + cardABox.width / 2, cardABox.y + cardABox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 20 });
+      await page.mouse.up();
+    }
+
+    // Wait for UI to settle
+    await page.waitForTimeout(1000);
+
+    // Card A should now be in Target Column
+    await expect(targetColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card A' })).toBeVisible();
+    await expect(sourceColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card A' })).toHaveCount(0);
+
+    // Card B remains in Source Column - verify no invalid CSS transform
+    const cardBEl = sourceColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card B' });
+    await expect(cardBEl).toBeVisible();
+
+    // Verify Card B has no invalid "undefined" or "null" string in its transform style
+    const cardBTransform = await cardBEl.evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      return style.transform || el.style.transform || '';
+    });
+    expect(cardBTransform).not.toContain('undefined');
+    expect(cardBTransform).not.toContain('null');
+
+    // Verify Card B is properly positioned within Source Column bounds
+    const cardBBox = await cardBEl.boundingBox();
+    const sourceColumnBox = await sourceColumn.boundingBox();
+    if (cardBBox && sourceColumnBox) {
+      // Card should be horizontally within column bounds (with small tolerance)
+      expect(cardBBox.x).toBeGreaterThanOrEqual(sourceColumnBox.x - 5);
+      expect(cardBBox.x + cardBBox.width).toBeLessThanOrEqual(sourceColumnBox.x + sourceColumnBox.width + 5);
+    }
+
+    // Verify cards in Target Column are properly aligned (no inline transform artifacts)
+    const targetCards = targetColumn.locator('[data-testid^="card-"]');
+    const targetCardCount = await targetCards.count();
+    for (let i = 0; i < targetCardCount; i++) {
+      const card = targetCards.nth(i);
+      const cardTransform = await card.evaluate((el) => {
+        return el.style.transform || '';
+      });
+      expect(cardTransform).not.toContain('undefined');
+      expect(cardTransform).not.toContain('null');
+    }
+
+    // Verify Target Column has both Card A and Card C visible and within column bounds
+    const targetColumnBox = await targetColumn.boundingBox();
+    const cardCEl = targetColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Card C' });
+    await expect(cardCEl).toBeVisible();
+    const cardCBox = await cardCEl.boundingBox();
+    if (cardCBox && targetColumnBox) {
+      expect(cardCBox.x).toBeGreaterThanOrEqual(targetColumnBox.x - 5);
+      expect(cardCBox.x + cardCBox.width).toBeLessThanOrEqual(targetColumnBox.x + targetColumnBox.width + 5);
+    }
+  });
+
+  test('dragged card position persists after reload', async ({ page }) => {
+    await createBoard(page, 'Persist Drag Test Board');
+    await addColumn(page, 'To Do');
+    await addColumn(page, 'Done');
+
+    const boardsResp = await page.request.get('http://localhost:8000/api/boards');
+    const boards = await boardsResp.json();
+    const board = boards[0];
+    const boardDetail = await (await page.request.get(`http://localhost:8000/api/boards/${board.id}`)).json();
+    const todoCol = boardDetail.columns.find((c: { title: string }) => c.title === 'To Do');
+
+    await page.request.post('http://localhost:8000/api/cards', {
+      data: { title: 'Persist Drag Card', position: 0, column_id: todoCol.id },
+    });
+    await page.reload();
+    await page.getByTestId(`board-item-${board.id}`).waitFor({ state: 'visible' });
+    await page.getByTestId(`board-item-${board.id}`).click();
+    await page.waitForSelector('[data-testid^="column-"]');
+
+    const toDoColumn = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'To Do' }),
+    });
+    const doneColumn = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'Done' }),
+    });
+
+    const cardEl = toDoColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Persist Drag Card' });
+    const cardBox = await cardEl.boundingBox();
+    const targetBox = await doneColumn.boundingBox();
+
+    if (cardBox && targetBox) {
+      await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 20 });
+      await page.mouse.up();
+    }
+
+    await page.waitForTimeout(1000);
+
+    await expect(doneColumn.locator('[data-testid^="card-"]').filter({ hasText: 'Persist Drag Card' })).toBeVisible();
+
+    // Reload and verify persistence
+    await page.reload();
+    await page.getByTestId(`board-item-${board.id}`).waitFor({ state: 'visible' });
+    await page.getByTestId(`board-item-${board.id}`).click();
+    await page.waitForSelector('[data-testid^="column-"]');
+
+    const doneColumnAfterReload = page.locator('[data-testid^="column-"]').filter({
+      has: page.locator('[data-testid^="column-title-"]').filter({ hasText: 'Done' }),
+    });
+    await expect(doneColumnAfterReload.locator('[data-testid^="card-"]').filter({ hasText: 'Persist Drag Card' })).toBeVisible();
   });
 });

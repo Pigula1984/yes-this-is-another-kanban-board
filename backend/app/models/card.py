@@ -22,6 +22,8 @@ class Card(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     column_id: Mapped[int] = mapped_column(ForeignKey("columns.id"), nullable=False)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    assignee: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC)
     )

@@ -6,8 +6,9 @@ A full-stack Kanban board application built with Python/FastAPI and React/TypeSc
 
 - **Create Boards** — Organize your work across multiple independent boards
 - **Manage Columns** — Add columns to structure work stages (To Do, In Progress, Done, etc.)
-- **Create and Edit Cards** — Add tasks with titles and optional descriptions
-- **Drag and Drop** — Move cards between columns and reorder them within columns using pointer-based drag detection
+- **Create and Edit Cards** — Add tasks with titles, optional descriptions, assignees, and due dates
+- **Card Metadata** — Assign tasks to team members and track due dates with overdue highlighting
+- **Drag and Drop** — Move cards between columns and reorder them within columns using pointer-based drag detection with reliable alignment
 - **Real-time Persistence** — All changes are persisted to SQLite database
 - **Board Selection** — Sidebar navigation to quickly switch between boards
 - **Delete Operations** — Remove boards, columns, and cards with confirmation
@@ -230,6 +231,26 @@ npm run dev
 
 Then open `http://localhost:5173` in your browser.
 
+## Card Features and Metadata
+
+Cards now support rich metadata to help teams track and organize work more effectively:
+
+### Assignees
+- Assign cards to team members by entering their name
+- Assignee information is displayed on each card with a user icon
+- Useful for tracking who is responsible for each task
+
+### Due Dates
+- Set optional due dates for cards to track deadlines
+- Due dates are displayed with a calendar icon on the card
+- Cards with due dates in the past are highlighted in red with an "Overdue" label
+- Helps prioritize work and maintain accountability
+
+### Visual Feedback
+- Overdue cards display a red left border and red text for high visibility
+- Hover effects elevate cards to show interactivity
+- Dark mode support for comfortable viewing in low-light environments
+
 ## Design System
 
 The frontend follows a modern SaaS aesthetic with a professional, minimal design system:
@@ -348,6 +369,8 @@ Returns a specific board with all its columns and nested cards.
           "description": "Do something",
           "position": 0,
           "column_id": 1,
+          "due_date": "2025-03-15T00:00:00",
+          "assignee": "Alice",
           "created_at": "2025-02-21T10:31:00Z"
         }
       ]
@@ -480,6 +503,8 @@ Returns all cards in the specified column.
     "description": "Do something",
     "position": 0,
     "column_id": 1,
+    "due_date": "2025-03-15T00:00:00",
+    "assignee": "Alice",
     "created_at": "2025-02-21T10:31:00Z"
   }
 ]
@@ -499,7 +524,9 @@ Creates a new card in a column.
   "title": "New Task",
   "description": "Task details (optional)",
   "position": 0,
-  "column_id": 1
+  "column_id": 1,
+  "due_date": "2025-03-15",
+  "assignee": "Alice"
 }
 ```
 
@@ -511,6 +538,8 @@ Creates a new card in a column.
   "description": "Task details",
   "position": 0,
   "column_id": 1,
+  "due_date": "2025-03-15T00:00:00",
+  "assignee": "Alice",
   "created_at": "2025-02-21T10:31:00Z"
 }
 ```
@@ -521,7 +550,7 @@ Creates a new card in a column.
 PATCH /cards/{card_id}
 ```
 
-Updates a card's properties. All fields are optional. Use this endpoint to move cards between columns or change their position.
+Updates a card's properties. All fields are optional. Use this endpoint to move cards between columns, change their position, update assignees, or modify due dates.
 
 **Request Body:**
 ```json
@@ -529,7 +558,9 @@ Updates a card's properties. All fields are optional. Use this endpoint to move 
   "title": "Updated Task",
   "description": "Updated description",
   "position": 2,
-  "column_id": 2
+  "column_id": 2,
+  "due_date": "2025-03-20",
+  "assignee": "Bob"
 }
 ```
 
@@ -541,6 +572,8 @@ Updates a card's properties. All fields are optional. Use this endpoint to move 
   "description": "Updated description",
   "position": 2,
   "column_id": 2,
+  "due_date": "2025-03-20T00:00:00",
+  "assignee": "Bob",
   "created_at": "2025-02-21T10:31:00Z"
 }
 ```
@@ -598,6 +631,8 @@ A task or item within a column.
 | `description` | String | Optional (nullable) | Detailed description or notes |
 | `position` | Integer | Required | Display order within the column (0-indexed) |
 | `column_id` | Integer | Foreign Key → Column | Reference to parent column |
+| `due_date` | DateTime | Optional (nullable) | When the task is due; used for deadline tracking and overdue highlighting |
+| `assignee` | String | Optional (nullable) | Name or identifier of the person assigned to the task |
 | `created_at` | DateTime | Default: UTC now | Timestamp when card was created |
 
 **Relationships:**
@@ -620,6 +655,11 @@ Column (1) ──────── (0..N) Card
                       - column_id
                       - created_at
 ```
+
+## Recent Improvements
+
+### Drag-and-Drop Reliability
+The drag-and-drop system has been improved to ensure proper CSS transform concatenation during card movement. This fixes alignment issues that occurred when dragging cards between columns, particularly when combining hover effects with drag transforms. Cards now maintain proper alignment throughout the drag operation and during visual feedback interactions.
 
 ## Running Tests
 
@@ -704,6 +744,8 @@ The `kanban.spec.ts` file includes tests for:
 - Adding cards to columns
 - Dragging cards between columns
 - Verifying card position persistence after page reload
+- Card alignment during cross-column drag operations
+- Due date and assignee field CRUD operations
 
 **Note:** E2E tests require both the backend (`http://localhost:8000`) and frontend (`http://localhost:5173`) to be running.
 

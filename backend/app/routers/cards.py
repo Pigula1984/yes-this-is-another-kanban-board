@@ -24,6 +24,8 @@ def create_card(card_in: CardCreate, db: Session = Depends(get_db)) -> Card:
         description=card_in.description,
         position=card_in.position,
         column_id=card_in.column_id,
+        due_date=card_in.due_date,
+        assignee=card_in.assignee,
     )
     db.add(card)
     db.commit()
@@ -47,6 +49,10 @@ def update_card(
         card.position = card_in.position
     if card_in.column_id is not None:
         card.column_id = card_in.column_id
+    if "due_date" in card_in.model_fields_set:
+        card.due_date = card_in.due_date
+    if "assignee" in card_in.model_fields_set:
+        card.assignee = card_in.assignee
     db.commit()
     db.refresh(card)
     return card
