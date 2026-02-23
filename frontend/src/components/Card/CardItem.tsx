@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Calendar, User } from 'lucide-react';
 import type { Card } from '../../api/client';
 
 interface Props {
@@ -15,15 +16,26 @@ export function CardItem({ card, onDelete }: Props) {
     data: { type: 'card', card },
   });
 
+  const parseDueDate = (s: string) => new Date(s.includes('T') ? s : s + 'T00:00:00');
+  const isOverdue = !!card.due_date && parseDueDate(card.due_date) < new Date(new Date().toDateString());
+
+  const baseTransform = CSS.Transform.toString(transform);
+  const hoverTranslate = hovered ? 'translateY(-1px)' : '';
+  const combinedTransform = baseTransform
+    ? (hoverTranslate ? `${baseTransform} ${hoverTranslate}` : baseTransform)
+    : (hoverTranslate || undefined);
+
   const style = {
-    transform: CSS.Transform.toString(transform) + (hovered && !isDragging ? ' translateY(-1px)' : ''),
-    transition: transition || 'box-shadow 0.15s ease, transform 0.15s ease',
+    transform: isDragging ? undefined : combinedTransform,
+    transition: isDragging ? undefined : transition || 'box-shadow 0.15s ease, transform 0.15s ease',
     opacity: isDragging ? 0.4 : 1,
     boxShadow: isDragging
       ? 'none'
-      : hovered
-        ? '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 8px 20px -4px rgb(0 0 0 / 0.1)'
-        : '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 4px 0 rgb(0 0 0 / 0.05)',
+      : isOverdue
+        ? `inset 3px 0 0 #ef4444${hovered ? ', 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 8px 20px -4px rgb(0 0 0 / 0.1)' : ', 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 4px 0 rgb(0 0 0 / 0.05)'}`
+        : hovered
+          ? '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 8px 20px -4px rgb(0 0 0 / 0.1)'
+          : '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 4px 0 rgb(0 0 0 / 0.05)',
   };
 
   return (
@@ -50,6 +62,23 @@ export function CardItem({ card, onDelete }: Props) {
       </div>
       {card.description && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">{card.description}</p>
+      )}
+      {card.assignee && (
+        <div className="flex items-center gap-1 mt-1.5">
+          <User size={11} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <span className="text-xs text-gray-500 dark:text-gray-400">{card.assignee}</span>
+        </div>
+      )}
+      {card.due_date && (
+        <div className="flex items-center gap-1 mt-1">
+          <Calendar size={11} className={`flex-shrink-0 ${isOverdue ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`} />
+          <span className={`text-xs ${isOverdue ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+            {parseDueDate(card.due_date).toLocaleDateString()}
+          </span>
+          {isOverdue && (
+            <span data-testid={`card-overdue-${card.id}`} className="text-xs text-red-500 font-medium">Overdue</span>
+          )}
+        </div>
       )}
     </article>
   );
