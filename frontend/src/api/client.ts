@@ -26,6 +26,8 @@ export interface Card {
   position: number;
   column_id: number;
   created_at: string;
+  due_date: string | null;
+  assignee: string | null;
 }
 
 // Boards
@@ -42,8 +44,8 @@ export const updateColumn = (id: number, data: { title?: string; position?: numb
 export const deleteColumn = (id: number) => api.delete(`/columns/${id}`);
 
 // Cards
-export const createCard = (data: { title: string; description?: string; position: number; column_id: number }) =>
+export const createCard = (data: { title: string; description?: string; position: number; column_id: number; due_date?: string; assignee?: string }) =>
   api.post<Card>('/cards', data).then(r => r.data);
-export const updateCard = (id: number, data: { title?: string; description?: string; position?: number; column_id?: number }) =>
+export const updateCard = (id: number, data: { title?: string; description?: string; position?: number; column_id?: number; due_date?: string | null; assignee?: string | null }) =>
   api.patch<Card>(`/cards/${id}`, data).then(r => r.data);
 export const deleteCard = (id: number) => api.delete(`/cards/${id}`);

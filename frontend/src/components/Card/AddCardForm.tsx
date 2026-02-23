@@ -2,19 +2,30 @@ import { useState } from 'react';
 
 interface Props {
   columnId: number;
-  onAdd: (title: string) => void;
+  onAdd: (title: string, assignee?: string, dueDate?: string) => void;
 }
 
 export function AddCardForm({ columnId: _columnId, onAdd }: Props) {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
+  const [assignee, setAssignee] = useState('');
+  const [dueDate, setDueDate] = useState('');
 
   const handleSubmit = () => {
     if (title.trim()) {
-      onAdd(title.trim());
+      onAdd(title.trim(), assignee || undefined, dueDate || undefined);
       setTitle('');
+      setAssignee('');
+      setDueDate('');
       setAdding(false);
     }
+  };
+
+  const handleCancel = () => {
+    setTitle('');
+    setAssignee('');
+    setDueDate('');
+    setAdding(false);
   };
 
   if (!adding) {
@@ -41,8 +52,25 @@ export function AddCardForm({ columnId: _columnId, onAdd }: Props) {
         autoFocus
         value={title}
         onChange={e => setTitle(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') setAdding(false); }}
+        onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') handleCancel(); }}
         placeholder="Card title"
+        className="w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-slate-200 dark:border-gray-600 rounded-lg px-3 py-2 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+      />
+      <input
+        data-testid="card-assignee-input"
+        aria-label="Assignee"
+        type="text"
+        value={assignee}
+        onChange={e => setAssignee(e.target.value)}
+        placeholder="Assignee (optional)"
+        className="w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-slate-200 dark:border-gray-600 rounded-lg px-3 py-2 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+      />
+      <input
+        data-testid="card-due-date-input"
+        aria-label="Due date"
+        type="date"
+        value={dueDate}
+        onChange={e => setDueDate(e.target.value)}
         className="w-full text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-slate-200 dark:border-gray-600 rounded-lg px-3 py-2 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
       />
       <div className="flex gap-2">
@@ -54,7 +82,7 @@ export function AddCardForm({ columnId: _columnId, onAdd }: Props) {
           Add
         </button>
         <button
-          onClick={() => setAdding(false)}
+          onClick={handleCancel}
           className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
         >
           Cancel

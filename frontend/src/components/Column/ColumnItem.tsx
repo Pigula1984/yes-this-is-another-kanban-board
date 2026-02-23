@@ -8,7 +8,7 @@ import { AddCardForm } from '../Card/AddCardForm';
 interface Props {
   column: Column;
   cards: Card[];
-  onAddCard: (columnId: number, title: string) => void;
+  onAddCard: (columnId: number, title: string, assignee?: string, dueDate?: string) => void;
   onDeleteCard: (cardId: number) => void;
   onDeleteColumn: (columnId: number) => void;
 }
@@ -66,7 +66,7 @@ export function ColumnItem({ column, cards, onAddCard, onDeleteCard, onDeleteCol
         </SortableContext>
       </div>
 
-      <AddCardForm columnId={column.id} onAdd={(t) => onAddCard(column.id, t)} />
+      <AddCardForm columnId={column.id} onAdd={(t, assignee, dueDate) => onAddCard(column.id, t, assignee, dueDate)} />
     </section>
   );
 }
