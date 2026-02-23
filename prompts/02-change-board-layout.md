@@ -8,10 +8,6 @@ If you need additional teammates, their list is in the CLAUDE.md file.
 
 ## Second prompt
 
-I can't create a new board. When I try to save it, nothing happens. Please check what the problem is. I'm getting the following error in the backend: 127.0.0.1:51738 - "OPTIONS /api/boards HTTP/1.1" 400 Bad Request
-
-## Third prompt
-
 Please redesign the Kanban Board UI to make it look modern, professional, and consistent with current high-end SaaS trends (like Linear, Vercel, or Notion).
 Create an agent team to explore this from different angles. You should choose teammates you consider useful. Make sure they discuss the task with each other before completing it.
 
